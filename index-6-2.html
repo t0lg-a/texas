@@ -1,0 +1,1395 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Texas Precinct Dashboard (SVG)</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#060c18;
+      --panel:#0a1628;
+      --panel2:#070f20;
+      --panel-glass: rgba(10, 22, 44, 0.75);
+      --text:#e4eaf8;
+      --muted:#8a99bc;
+      --border:rgba(134,168,255,.08);
+      --border-hover:rgba(134,168,255,.18);
+      --accent:#6b9fff;
+      --accent-glow: rgba(107, 159, 255, .15);
+      --accent-soft: rgba(107, 159, 255, .06);
+      --danger:#ff5c5c;
+      --ok:#5ef0a8;
+      --card-bg: rgba(255,255,255,.018);
+      --card-border: rgba(134,168,255,.07);
+      --card-shadow: 0 4px 24px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.15);
+      --input-bg: rgba(255,255,255,.03);
+      --input-border: rgba(134,168,255,.10);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --sidebar-w: 380px;
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    *,*::before,*::after{box-sizing:border-box;}
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ═══════════ LAYOUT ═══════════ */
+    .app{
+      display:grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      height:100%;
+    }
+
+    .sidebar{
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+      border-right:1px solid var(--border);
+      padding: 20px 18px 24px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      z-index: 2;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(134,168,255,.12) transparent;
+    }
+    .sidebar::-webkit-scrollbar{ width:5px; }
+    .sidebar::-webkit-scrollbar-track{ background:transparent; }
+    .sidebar::-webkit-scrollbar-thumb{ background:rgba(134,168,255,.12); border-radius:99px; }
+    .sidebar::-webkit-scrollbar-thumb:hover{ background:rgba(134,168,255,.22); }
+
+    /* Subtle sidebar glow accent at top */
+    .sidebar::before{
+      content:'';
+      position:absolute;
+      top:0; left:0; right:0;
+      height:160px;
+      background: radial-gradient(ellipse 70% 100% at 50% -20%, rgba(107,159,255,.06) 0%, transparent 100%);
+      pointer-events:none;
+      z-index:0;
+    }
+
+    .mapwrap{
+      position:relative;
+      overflow:hidden;
+      background: var(--bg);
+    }
+
+    /* Subtle dot pattern on map background */
+    .mapwrap::before{
+      content:'';
+      position:absolute;
+      inset:0;
+      background-image: radial-gradient(circle, rgba(134,168,255,.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events:none;
+      z-index:0;
+    }
+
+    /* Vignette overlay on map */
+    .mapwrap::after{
+      content:'';
+      position:absolute;
+      inset:0;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(6,12,24,.5) 100%);
+      pointer-events:none;
+      z-index:1;
+    }
+
+    #mapHost{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:0;
+    }
+
+    /* ═══════════ TYPOGRAPHY ═══════════ */
+    .title{
+      font-family: var(--font-display);
+      font-weight:700;
+      letter-spacing:-.02em;
+      font-size:20px;
+      margin:0 0 4px;
+      position:relative;
+      z-index:1;
+      background: linear-gradient(135deg, #fff 0%, #b4ccff 100%);
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      background-clip:text;
+    }
+
+    /* Brand subline */
+    .brand-sub{
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      letter-spacing: .06em;
+      color: var(--muted);
+      opacity:.55;
+      margin: 0 0 16px;
+      position:relative;
+      z-index:1;
+      text-transform:uppercase;
+    }
+
+    label{
+      font-family: var(--font-body);
+      font-size:11.5px;
+      font-weight:500;
+      color:var(--muted);
+      display:block;
+      margin:12px 0 5px;
+      letter-spacing:.02em;
+      text-transform:uppercase;
+    }
+
+    /* ═══════════ CARD ═══════════ */
+    .card{
+      border:1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 14px 14px 16px;
+      background: var(--card-bg);
+      margin:12px 0;
+      box-shadow: var(--card-shadow);
+      position:relative;
+      z-index:1;
+      backdrop-filter: blur(12px);
+      transition: border-color .3s ease;
+    }
+    .card:hover{
+      border-color: var(--border-hover);
+    }
+
+    /* Card inner glow line at top */
+    .card::before{
+      content:'';
+      position:absolute;
+      top:0; left:20px; right:20px;
+      height:1px;
+      background: linear-gradient(90deg, transparent, rgba(107,159,255,.15), transparent);
+      border-radius: 0 0 2px 2px;
+    }
+
+    /* ═══════════ INPUTS ═══════════ */
+    select, button{
+      width:100%;
+      border:1px solid var(--input-border);
+      background: var(--input-bg);
+      color:var(--text);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-family: var(--font-body);
+      font-size:13px;
+      outline:none;
+      transition: all .2s ease;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    select{
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a99bc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      cursor:pointer;
+    }
+
+    select:focus, button:focus{
+      border-color:rgba(107,159,255,.4);
+      box-shadow: 0 0 0 3px var(--accent-glow), inset 0 0 12px rgba(107,159,255,.03);
+    }
+
+    select:hover, button:hover{
+      border-color:rgba(107,159,255,.2);
+      background: rgba(255,255,255,.04);
+    }
+
+    select option{
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    button{
+      cursor:pointer;
+      user-select:none;
+      font-weight:500;
+      letter-spacing:.01em;
+      position:relative;
+      overflow:hidden;
+    }
+
+    button::after{
+      content:'';
+      position:absolute;
+      inset:0;
+      background: linear-gradient(180deg, rgba(255,255,255,.03) 0%, transparent 100%);
+      pointer-events:none;
+    }
+
+    button:active{
+      transform: scale(.98);
+      transition: transform .05s;
+    }
+
+    button.secondary{
+      background:rgba(255,255,255,.02);
+    }
+    button.secondary:hover{
+      background: var(--accent-soft);
+      border-color: rgba(107,159,255,.2);
+    }
+
+    /* ═══════════ TABS ═══════════ */
+    .tabs{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin:8px 0 2px;
+    }
+
+    .tab{
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      border:1px solid var(--card-border);
+      background: rgba(255,255,255,.02);
+      font-family: var(--font-body);
+      font-size:12.5px;
+      font-weight:500;
+      cursor:pointer;
+      transition: all .22s ease;
+      text-align:center;
+      color: var(--muted);
+      position: relative;
+      overflow:hidden;
+    }
+
+    .tab:hover{
+      border-color: rgba(107,159,255,.18);
+      background: rgba(107,159,255,.04);
+      color: var(--text);
+    }
+
+    .tab.active{
+      border-color: rgba(107,159,255,.35);
+      background: linear-gradient(180deg, rgba(107,159,255,.10) 0%, rgba(107,159,255,.04) 100%);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(107,159,255,.06), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    /* Active tab glow dot */
+    .tab.active::before{
+      content:'';
+      position:absolute;
+      top:6px; right:6px;
+      width:5px; height:5px;
+      border-radius:50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot{
+      0%,100%{ opacity:.5; transform:scale(.9); }
+      50%{ opacity:1; transform:scale(1.1); }
+    }
+
+    .subtabs{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    /* ═══════════ LEGEND ═══════════ */
+    .legend{
+      margin-top:16px;
+    }
+
+    .legendbar{
+      height:16px;
+      border-radius:999px;
+      border:1px solid var(--card-border);
+      overflow:hidden;
+      background:rgba(255,255,255,.02);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.02);
+      position: relative;
+    }
+
+    /* Shine on legend bar */
+    .legendbar::after{
+      content:'';
+      position:absolute;
+      top:0; left:0; right:0;
+      height:50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.06) 0%, transparent 100%);
+      border-radius: 999px 999px 0 0;
+      pointer-events:none;
+    }
+
+    .legendticks{
+      display:flex;
+      justify-content:space-between;
+      font-family: var(--font-mono);
+      font-size:10px;
+      font-weight:500;
+      color:var(--muted);
+      margin-top:6px;
+      opacity:.7;
+    }
+
+    .hint{
+      font-size:11.5px;
+      color:var(--muted);
+      line-height:1.5;
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(107,159,255,.03);
+      border: 1px solid rgba(107,159,255,.05);
+      opacity:.8;
+    }
+
+    .kv{
+      font-size:12px;
+      color:var(--muted);
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:5px 14px;
+      margin-top:12px;
+      padding: 10px 0 0;
+      border-top: 1px solid var(--border);
+    }
+    .kv div{
+      padding: 3px 0;
+    }
+    .kv b{
+      color:var(--text);
+      font-family: var(--font-mono);
+      font-weight:600;
+      font-size:12px;
+      padding: 3px 0;
+    }
+
+    .status{
+      font-size:11.5px;
+      color:var(--muted);
+      margin-top: 10px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .status::before{
+      content:'';
+      display:inline-block;
+      width:6px; height:6px;
+      border-radius:50%;
+      background: var(--ok);
+      box-shadow: 0 0 8px rgba(94,240,168,.3);
+      flex-shrink:0;
+    }
+    .status .ok{color:var(--ok);}
+    .status .bad{color:var(--danger);}
+
+    /* ═══════════ LOADING OVERLAY ═══════════ */
+    #overlay{
+      position:absolute; inset:0;
+      background:rgba(6,12,24,.82);
+      backdrop-filter: blur(8px);
+      display:flex; align-items:center; justify-content:center;
+      z-index:20;
+      animation: overlay-in .3s ease-out;
+    }
+
+    @keyframes overlay-in{
+      from{ opacity:0; }
+      to{ opacity:1; }
+    }
+
+    #overlay .box{
+      width:min(520px, 90vw);
+      border:1px solid rgba(107,159,255,.12);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(15,26,50,.95) 0%, rgba(10,20,40,.98) 100%);
+      padding: 20px 22px 18px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.4), 0 0 60px rgba(107,159,255,.04);
+      position:relative;
+      overflow:hidden;
+      animation: box-in .4s ease-out;
+    }
+
+    @keyframes box-in{
+      from{ opacity:0; transform:translateY(12px) scale(.97); }
+      to{ opacity:1; transform:translateY(0) scale(1); }
+    }
+
+    /* Animated loading glow on overlay box */
+    #overlay .box::before{
+      content:'';
+      position:absolute;
+      top:0; left:0; right:0;
+      height:2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer{
+      0%{ transform:translateX(-100%); }
+      100%{ transform:translateX(100%); }
+    }
+
+    #overlay .line1{
+      font-family: var(--font-display);
+      font-weight:700;
+      margin:0 0 8px;
+      font-size:16px;
+      letter-spacing:-.01em;
+    }
+    #overlay .line2{
+      margin:0;
+      font-family: var(--font-mono);
+      font-size:11.5px;
+      color:var(--muted);
+      white-space:pre-wrap;
+      line-height:1.6;
+    }
+    #overlay .btnrow{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+    }
+    #overlay button{
+      width:auto;
+      padding:9px 16px;
+      border-radius: var(--radius-sm);
+      font-weight:600;
+    }
+
+    /* ═══════════ TOOLTIP ═══════════ */
+    #tip{
+      position:absolute;
+      z-index:15;
+      pointer-events:none;
+      transform: translate(14px,14px);
+      min-width: 220px;
+      max-width: 340px;
+      border:1px solid rgba(107,159,255,.14);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(14,24,48,.97) 0%, rgba(10,18,38,.98) 100%);
+      padding: 12px 14px;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4), 0 0 1px rgba(107,159,255,.15);
+      opacity:0;
+      transition: opacity .1s ease;
+      backdrop-filter: blur(16px);
+    }
+    #tip.show{opacity:1;}
+
+    #tip .h{
+      font-family: var(--font-display);
+      font-weight:700;
+      font-size:13.5px;
+      margin:0 0 6px;
+      letter-spacing:-.01em;
+    }
+    #tip .p{
+      margin:0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    #tip .mono{
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight:500;
+    }
+
+    /* ═══════════ SVG MAP ═══════════ */
+    #txsvg path{
+      fill:#1a2d4a;
+      stroke: rgba(134,168,255,.08);
+      stroke-width: .30;
+      vector-effect: non-scaling-stroke;
+      paint-order: stroke fill;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      cursor: pointer;
+      transition: stroke .08s, stroke-width .08s;
+    }
+    #txsvg path.miss{fill:#0a1424;}
+    #txsvg path.hover{
+      stroke: rgba(255,255,255,.85);
+      stroke-width: 1;
+      filter: drop-shadow(0 0 3px rgba(134,168,255,.2));
+    }
+
+    /* ═══════════ MISC ═══════════ */
+    .mini{
+      font-family: var(--font-mono);
+      font-size:10.5px;
+      color:var(--muted);
+      margin-top:6px;
+      opacity:.65;
+    }
+
+    .pill{
+      display:inline-block;
+      padding:3px 10px;
+      border:1px solid var(--card-border);
+      border-radius:999px;
+      font-family: var(--font-display);
+      font-size:11px;
+      font-weight:600;
+      color:var(--muted);
+      letter-spacing:.02em;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+
+    .mono{
+      font-family: var(--font-mono) !important;
+      font-size:11px;
+    }
+
+    /* ═══════════ RESPONSIVE ═══════════ */
+    @media (max-width: 900px){
+      .app{
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+      .sidebar{
+        max-height:45vh;
+        border-right:none;
+        border-bottom:1px solid var(--border);
+      }
+    }
+
+    /* ═══════════ SCROLLBAR (map area) ═══════════ */
+    .mapwrap::-webkit-scrollbar{ display:none; }
+
+    /* ═══════════ SELECTION ═══════════ */
+    ::selection{
+      background: rgba(107,159,255,.25);
+      color:#fff;
+    }
+  </style>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1 class="title">Texas Precinct Dashboard</h1>
+      <div class="brand-sub">SVG Choropleth Explorer</div>
+
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" data-tab="results">Election results</div>
+          <div class="tab" data-tab="swing">Election swing</div>
+        </div>
+        <div class="tabs" style="margin-top:8px;">
+          <div class="tab" data-tab="trend">Trend index</div>
+          <div class="tab" data-tab="trendChange">Trend change</div>
+        </div>
+
+        <label>Data file</label>
+        <select id="dataFile"></select>
+        <div class="mini">Best: <span class="mono">precinct-data-pctkey.csv</span> (must include <span class="mono">PCTKEY</span>).</div>
+
+        <div id="panelResults" class="panel">
+          <label>Contest</label>
+          <select id="contest"></select>
+        </div>
+
+        <div id="panelSwing" class="panel" style="display:none;">
+          <label>From</label>
+          <select id="swingFrom"></select>
+          <label>To</label>
+          <select id="swingTo"></select>
+        </div>
+
+        <div id="panelTrend" class="panel" style="display:none;">
+          <label>Contest</label>
+          <select id="trendContest"></select>
+          <label>Party</label>
+          <select id="trendParty">
+            <option value="D">Dem</option>
+            <option value="R">Rep</option>
+          </select>
+        </div>
+
+        <div id="panelTrendChange" class="panel" style="display:none;">
+          <label>From</label>
+          <select id="trendFrom"></select>
+          <label>To</label>
+          <select id="trendTo"></select>
+          <label>Party</label>
+          <select id="trendChangeParty">
+            <option value="D">Dem</option>
+            <option value="R">Rep</option>
+          </select>
+        </div>
+
+        <div class="subtabs">
+          <button id="fitBtn" class="secondary">⊡ Fit</button>
+          <button id="resetBtn" class="secondary">↻ Reset zoom</button>
+        </div>
+
+        <div class="legend">
+          <div class="pill" id="legendTitle">Margin</div>
+          <div class="legendbar" id="legendBar"></div>
+          <div class="legendticks" id="legendTicks"></div>
+        </div>
+
+        <div class="hint">
+          Click a precinct for details. Hover highlights. If you open this via <span class="mono">file://</span>, fetch() will fail—serve it (GitHub Pages or a local server).
+        </div>
+
+        <div class="kv" id="stats">
+          <div>SVG paths</div><b id="statPaths">–</b>
+          <div>Data rows</div><b id="statRows">–</b>
+          <div>Matched</div><b id="statMatched">–</b>
+          <div>Unmatched</div><b id="statUnmatched">–</b>
+        </div>
+
+        <div class="status" id="status">Status: <span class="ok">ready</span></div>
+      </div>
+    </aside>
+
+    <main class="mapwrap">
+      <div id="mapHost"></div>
+      <div id="tip"></div>
+
+      <div id="overlay" style="display:none;">
+        <div class="box">
+          <p class="line1" id="ovTitle">Loading…</p>
+          <p class="line2" id="ovMsg">Starting…</p>
+          <div class="btnrow">
+            <button id="ovClose" class="secondary" style="display:none;">Close</button>
+            <button id="ovReload" class="secondary" style="display:none;">Reload</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- Utilities ----------
+  const $ = (sel) => document.querySelector(sel);
+  const overlay = $("#overlay");
+  const ovTitle = $("#ovTitle");
+  const ovMsg = $("#ovMsg");
+  const ovClose = $("#ovClose");
+  const ovReload = $("#ovReload");
+
+  function showOverlay(title, msg, {closable=false, reload=false} = {}) {
+    ovTitle.textContent = title;
+    ovMsg.textContent = msg;
+    overlay.style.display = "flex";
+    ovClose.style.display = closable ? "inline-block" : "none";
+    ovReload.style.display = reload ? "inline-block" : "none";
+  }
+  function hideOverlay(){ overlay.style.display = "none"; }
+  function nextFrame(){ return new Promise(r => requestAnimationFrame(() => r())); }
+
+  function setStatus(text, ok=true){
+    $("#status").innerHTML = `Status: <span class="${ok ? "ok":"bad"}">${escapeHtml(text)}</span>`;
+  }
+  function escapeHtml(s){
+    return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  }
+
+  function clamp(x,a,b){ return x<a?a : (x>b?b:x); }
+
+  function gamma01(t, g){ return Math.pow(clamp(t,0,1), g); }
+  function gammaSigned(z, g){
+    const s = z < 0 ? -1 : 1;
+    const a = Math.abs(z);
+    return s * Math.pow(clamp(a,0,1), g);
+  }
+
+  // RGB helpers
+  function hex2rgb(hex){
+    const h = hex.replace("#","").trim();
+    const n = parseInt(h,16);
+    return [(n>>16)&255, (n>>8)&255, n&255];
+  }
+  function rgb2hex(r,g,b){
+    const to = (v)=> v.toString(16).padStart(2,"0");
+    return "#" + to(r) + to(g) + to(b);
+  }
+  function lerp(a,b,t){ return a + (b-a)*t; }
+  function lerpRgb(c0,c1,t){
+    return [
+      Math.round(lerp(c0[0],c1[0],t)),
+      Math.round(lerp(c0[1],c1[1],t)),
+      Math.round(lerp(c0[2],c1[2],t)),
+    ];
+  }
+
+  // Palettes (precomputed for speed)
+  const C_NEU = hex2rgb("#223554"); // neutral (brighter for contrast)
+  const C_D   = hex2rgb("#2f7dff"); // vivid blue
+  const C_R   = hex2rgb("#ff3b3b"); // vivid red
+  const C_BG  = hex2rgb("#0e1728"); // missing
+  const PAL_N = 101;
+
+  function paletteDiverging() {
+    // t in [-1,1] => red<0, neutral at 0, blue>0
+    const pal = new Array(PAL_N);
+    for(let i=0;i<PAL_N;i++){
+      const t = (i/(PAL_N-1))*2 - 1;
+      if (t < 0){
+        const c = lerpRgb(C_NEU, C_R, -t);
+        pal[i] = rgb2hex(c[0],c[1],c[2]);
+      } else {
+        const c = lerpRgb(C_NEU, C_D, t);
+        pal[i] = rgb2hex(c[0],c[1],c[2]);
+      }
+    }
+    return pal;
+  }
+
+  function paletteSequential(party){
+    // t in [0,1] => neutral -> party color
+    const to = (party==="D") ? C_D : C_R;
+    const pal = new Array(PAL_N);
+    for(let i=0;i<PAL_N;i++){
+      const t = i/(PAL_N-1);
+      const c = lerpRgb(C_NEU, to, t);
+      pal[i] = rgb2hex(c[0],c[1],c[2]);
+    }
+    return pal;
+  }
+
+  const PAL_MARGIN = paletteDiverging();
+  const PAL_SEQ_D = paletteSequential("D");
+  const PAL_SEQ_R = paletteSequential("R");
+  const FILL_MISS = rgb2hex(C_BG[0],C_BG[1],C_BG[2]);
+
+  // ---------- App state ----------
+  const state = {
+    tab: "results",
+    svg: null,
+    paths: null,
+    panzoom: null,
+    joinIndex: null,         // Int32Array(paths.length) -> rowIndex or -1
+    keyOfPath: null,         // (i)->key
+    data: null,              // raw rows
+    keyCol: null,
+    contests: [],            // contest metadata + typed arrays
+    contestKey: null,
+    swingFrom: null,
+    swingTo: null,
+    trendContest: null,
+    trendParty: "D",
+    trendFrom: null,
+    trendTo: null,
+    trendChangeParty: "D",
+    prevBin: null,
+    lastHover: null
+  };
+
+  // ---------- DOM refs ----------
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+  const panelResults = $("#panelResults");
+  const panelSwing = $("#panelSwing");
+  const panelTrend = $("#panelTrend");
+  const panelTrendChange = $("#panelTrendChange");
+
+  const selDataFile = $("#dataFile");
+  const selContest = $("#contest");
+  const selSwingFrom = $("#swingFrom");
+  const selSwingTo = $("#swingTo");
+  const selTrendContest = $("#trendContest");
+  const selTrendParty = $("#trendParty");
+  const selTrendFrom = $("#trendFrom");
+  const selTrendTo = $("#trendTo");
+  const selTrendChangeParty = $("#trendChangeParty");
+
+  const legendTitle = $("#legendTitle");
+  const legendBar = $("#legendBar");
+  const legendTicks = $("#legendTicks");
+  const tip = $("#tip");
+
+  // ---------- Initialization ----------
+  ovClose.onclick = () => hideOverlay();
+  ovReload.onclick = () => location.reload();
+
+  if (location.protocol === "file:") {
+    showOverlay("Blocked by browser", "You're opening index.html via file://.\n\nBrowsers block fetch() for local files.\nUse GitHub Pages or run a local server:\n  python3 -m http.server 8000\nthen open:\n  http://localhost:8000/", {reload:false, closable:false});
+  } else {
+    main().catch(err => fatal(err));
+  }
+
+  async function main(){
+    showOverlay("Loading…", "Starting…");
+    await nextFrame();
+
+    setStatus("loading svg…", true);
+    const svgUrl = await firstAvailable([
+      "./Precincts24G_keyed_simplified.svg",
+      "./Precincts24G.svg",
+      "./Precincts24G_WGS84/Precincts24G.svg",
+    ]);
+
+    if (!svgUrl) throw new Error("SVG not found. Put Precincts24G_keyed_simplified.svg or Precincts24G.svg next to index.html.");
+
+    showOverlay("Loading…", `Fetching SVG:\n${svgUrl}`);
+    await nextFrame();
+    const svgText = await fetchText(svgUrl);
+
+    showOverlay("Loading…", "Parsing SVG (this can take a few seconds)…");
+    await nextFrame();
+    const svgEl = parseSvg(svgText);
+    svgEl.setAttribute("id","txsvg");
+    svgEl.removeAttribute("width");
+    svgEl.removeAttribute("height");
+    svgEl.style.width = "100%";
+    svgEl.style.height = "100%";
+    svgEl.style.display = "block";
+
+    const host = $("#mapHost");
+    host.replaceChildren(svgEl);
+    state.svg = svgEl;
+
+    // Paths
+    const paths = svgEl.querySelectorAll("path");
+    state.paths = paths;
+    state.prevBin = new Int16Array(paths.length);
+    state.prevBin.fill(-32768);
+    $("#statPaths").textContent = String(paths.length);
+
+    // Key getter (prefer data-pctkey)
+    state.keyOfPath = (i) => {
+      const p = paths[i];
+      return p.getAttribute("data-pctkey") || p.getAttribute("data-PCTKEY") || p.id || "";
+    };
+
+    // Setup pan/zoom
+    showOverlay("Loading…", "Initializing pan/zoom…");
+    await nextFrame();
+    state.panzoom = svgPanZoom(svgEl, {
+      zoomEnabled: true,
+      controlIconsEnabled: false,
+      fit: true,
+      center: true,
+      minZoom: 1,
+      maxZoom: 40,
+      dblClickZoomEnabled: true,
+      mouseWheelZoomEnabled: true,
+      preventMouseEventsDefault: true
+    });
+
+    // UI wiring
+    $("#fitBtn").onclick = () => { state.panzoom.fit(); state.panzoom.center(); };
+    $("#resetBtn").onclick = () => { state.panzoom.resetZoom(); state.panzoom.center(); };
+    tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
+
+    selContest.addEventListener("change", () => { state.contestKey = selContest.value; scheduleRender(); });
+    selSwingFrom.addEventListener("change", () => { state.swingFrom = selSwingFrom.value; scheduleRender(); });
+    selSwingTo.addEventListener("change", () => { state.swingTo = selSwingTo.value; scheduleRender(); });
+    selTrendContest.addEventListener("change", () => { state.trendContest = selTrendContest.value; scheduleRender(); });
+    selTrendParty.addEventListener("change", () => { state.trendParty = selTrendParty.value; scheduleRender(); });
+    selTrendFrom.addEventListener("change", () => { state.trendFrom = selTrendFrom.value; scheduleRender(); });
+    selTrendTo.addEventListener("change", () => { state.trendTo = selTrendTo.value; scheduleRender(); });
+    selTrendChangeParty.addEventListener("change", () => { state.trendChangeParty = selTrendChangeParty.value; scheduleRender(); });
+
+    // Data file options (auto-detect)
+    const dataChoices = [
+      {label:"precinct-data-pctkey.csv", url:"./precinct-data-pctkey.csv"},
+      {label:"precinct-data-pctkey_auto.csv", url:"./precinct-data-pctkey_auto.csv"},
+      {label:"precinct-data.csv", url:"./precinct-data.csv"}
+    ];
+    for (const ch of dataChoices){
+      const opt = document.createElement("option");
+      opt.value = ch.url;
+      opt.textContent = ch.label;
+      selDataFile.appendChild(opt);
+    }
+    // pick first existing (in order)
+    const dataUrl = await firstAvailable(dataChoices.map(x=>x.url));
+    selDataFile.value = dataUrl || dataChoices[0].url;
+    selDataFile.addEventListener("change", () => loadData(selDataFile.value));
+
+    // Load data
+    await loadData(selDataFile.value);
+
+    // Event delegation for hover/click
+    svgEl.addEventListener("mousemove", onMove, {passive:true});
+    svgEl.addEventListener("mouseleave", () => { hideTip(); clearHover(); }, {passive:true});
+    svgEl.addEventListener("click", onClick, {passive:true});
+
+    hideOverlay();
+    setStatus("ready", true);
+    scheduleRender();
+  }
+
+  async function loadData(url){
+    setStatus("loading data…", true);
+    showOverlay("Loading…", `Fetching CSV:\n${url}`);
+    await nextFrame();
+    const csvText = await fetchText(url);
+
+    showOverlay("Loading…", "Parsing CSV…");
+    await nextFrame();
+    const rows = parseCsv(csvText);
+    state.data = rows;
+    $("#statRows").textContent = String(rows.length);
+
+    // Determine key column
+    const cols = rows.columns;
+    const keyCol = cols.includes("PCTKEY") ? "PCTKEY" :
+                   (cols.includes("pctkey") ? "pctkey" :
+                   (cols.includes("GEOID20") ? "GEOID20" : null));
+    state.keyCol = keyCol;
+
+    if (!keyCol) throw new Error("CSV missing a key column. Need PCTKEY (preferred) or GEOID20.");
+
+    // Build contest metadata
+    const contests = detectContests(cols);
+    if (!contests.length) throw new Error("No contests found. Expected columns like E_24_PRES_Dem / _Rep / _Total.");
+
+    // Build typed arrays per contest
+    // Also compute statewide totals for trend index.
+    showOverlay("Loading…", "Indexing contests…");
+    await nextFrame();
+
+    const rowCount = rows.length;
+    for (const c of contests){
+      c.demArr = new Float64Array(rowCount);
+      c.repArr = new Float64Array(rowCount);
+      c.totArr = new Float64Array(rowCount);
+      let sd=0, sr=0;
+      for (let i=0;i<rowCount;i++){
+        const r = rows[i];
+        const d = +r[c.demCol] || 0;
+        const rr = +r[c.repCol] || 0;
+        const t = (+r[c.totCol] || (d+rr));
+        c.demArr[i]=d;
+        c.repArr[i]=rr;
+        c.totArr[i]=t;
+        sd += d;
+        sr += rr;
+      }
+      const st = sd + sr;
+      c.stateDemPct = st>0 ? (sd/st) : 0.5;
+      c.stateRepPct = st>0 ? (sr/st) : 0.5;
+    }
+
+    state.contests = contests;
+
+    // Fill selects
+    fillContestSelect(selContest, contests);
+    fillContestSelect(selSwingFrom, contests);
+    fillContestSelect(selSwingTo, contests);
+    fillContestSelect(selTrendContest, contests);
+    fillContestSelect(selTrendFrom, contests);
+    fillContestSelect(selTrendTo, contests);
+
+    // Defaults
+    state.contestKey = contests[0].key;
+    state.swingFrom = contests[0].key;
+    state.swingTo = contests[Math.min(1, contests.length-1)].key;
+    state.trendContest = contests[0].key;
+    state.trendFrom = contests[0].key;
+    state.trendTo = contests[Math.min(1, contests.length-1)].key;
+
+    selContest.value = state.contestKey;
+    selSwingFrom.value = state.swingFrom;
+    selSwingTo.value = state.swingTo;
+    selTrendContest.value = state.trendContest;
+    selTrendFrom.value = state.trendFrom;
+    selTrendTo.value = state.trendTo;
+
+    // Join SVG paths to data rows
+    showOverlay("Loading…", "Matching SVG precincts to data…");
+    await nextFrame();
+    buildJoin();
+
+    hideOverlay();
+    setStatus("ready", true);
+    scheduleRender();
+  }
+
+  function buildJoin(){
+    const paths = state.paths;
+    const rows = state.data;
+    const keyCol = state.keyCol;
+
+    const keyToRow = new Map();
+    for (let i=0;i<rows.length;i++){
+      const k = String(rows[i][keyCol] ?? "").trim();
+      if (!k) continue;
+      if (!keyToRow.has(k)) keyToRow.set(k, i);
+    }
+
+    const join = new Int32Array(paths.length);
+    let matched=0;
+    for (let i=0;i<paths.length;i++){
+      const k = String(state.keyOfPath(i)).trim();
+      const idx = keyToRow.has(k) ? keyToRow.get(k) : -1;
+      join[i]=idx;
+      if (idx!==-1) matched++;
+      if (idx===-1) paths[i].classList.add("miss");
+      else paths[i].classList.remove("miss");
+    }
+    state.joinIndex = join;
+    $("#statMatched").textContent = String(matched);
+    $("#statUnmatched").textContent = String(paths.length - matched);
+
+    if (matched < Math.floor(paths.length*0.95)) {
+      setStatus(`low match (${matched}/${paths.length}) — use precinct-data-pctkey.csv`, false);
+    }
+  }
+
+  function detectContests(columns){
+    const out = [];
+    const demCols = columns.filter(c => c.endsWith("_Dem") && c.startsWith("E_"));
+    for (const dem of demCols){
+      const base = dem.slice(0, -4);
+      const rep = base + "_Rep";
+      const tot = base + "_Total";
+      if (!columns.includes(rep) || !columns.includes(tot)) continue;
+      out.push({
+        key: base,
+        label: prettyContest(base),
+        demCol: dem,
+        repCol: rep,
+        totCol: tot
+      });
+    }
+    out.sort((a,b) => a.key.localeCompare(b.key));
+    return out;
+  }
+
+  function prettyContest(k){
+    const parts = k.split("_");
+    if (parts.length >= 3 && parts[0]==="E"){
+      const yy = parts[1];
+      const year = (yy.length===2 ? ("20"+yy) : yy);
+      const race = parts.slice(2).join("_").replaceAll("-", "–");
+      return `${year} ${race}`;
+    }
+    return k;
+  }
+
+  function fillContestSelect(sel, contests){
+    sel.innerHTML = "";
+    for (const c of contests){
+      const opt = document.createElement("option");
+      opt.value = c.key;
+      opt.textContent = c.label;
+      sel.appendChild(opt);
+    }
+  }
+
+  function setTab(tab){
+    state.tab = tab;
+    tabs.forEach(t => t.classList.toggle("active", t.dataset.tab===tab));
+    panelResults.style.display = (tab==="results") ? "" : "none";
+    panelSwing.style.display = (tab==="swing") ? "" : "none";
+    panelTrend.style.display = (tab==="trend") ? "" : "none";
+    panelTrendChange.style.display = (tab==="trendChange") ? "" : "none";
+    scheduleRender();
+  }
+
+  // ---------- Rendering ----------
+  let renderQueued = false;
+  function scheduleRender(){
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      try { render(); }
+      catch(err){ fatal(err); }
+    });
+  }
+
+  function getContest(key){
+    return state.contests.find(c => c.key === key) || null;
+  }
+
+  function render(){
+    if (!state.paths || !state.joinIndex || !state.contests.length) return;
+
+    const tab = state.tab;
+    const paths = state.paths;
+    const join = state.joinIndex;
+
+    let vmin= -1, vmax= 1;
+    let palette = PAL_MARGIN;
+    let legend = {title:"Margin", ticks:["R+50","0","D+50"], gradient: gradientCss(PAL_MARGIN)};
+    let valueFn = null;
+
+    if (tab === "results"){
+      const c = getContest(state.contestKey);
+      if (!c) return;
+      legend = {title:`Margin · ${c.label}`, ticks:["R+50","0","D+50"], gradient: gradientCss(PAL_MARGIN)};
+      valueFn = (rowIdx) => margin(c.demArr[rowIdx], c.repArr[rowIdx]);
+      vmin = -0.50; vmax = 0.50;
+      palette = PAL_MARGIN;
+    } else if (tab === "swing"){
+      const c0 = getContest(state.swingFrom);
+      const c1 = getContest(state.swingTo);
+      if (!c0 || !c1) return;
+      legend = {title:`Swing · ${c0.label} → ${c1.label}`, ticks:["R swing","0","D swing"], gradient: gradientCss(PAL_MARGIN)};
+      valueFn = (rowIdx) => margin(c1.demArr[rowIdx], c1.repArr[rowIdx]) - margin(c0.demArr[rowIdx], c0.repArr[rowIdx]);
+      vmin = -0.25; vmax = 0.25;
+      palette = PAL_MARGIN;
+    } else if (tab === "trend"){
+      const c = getContest(state.trendContest);
+      if (!c) return;
+      const party = state.trendParty;
+      const pal = (party==="D") ? PAL_SEQ_D : PAL_SEQ_R;
+      legend = {title:`Trend index · ${party==="D"?"Dem":"Rep"} · ${c.label}`, ticks:["0","50","100"], gradient: gradientCss(pal)};
+      valueFn = (rowIdx) => trendIndex(c, rowIdx, party);
+      vmin = 0; vmax = 100;
+      palette = pal;
+    } else if (tab === "trendChange"){
+      const c0 = getContest(state.trendFrom);
+      const c1 = getContest(state.trendTo);
+      if (!c0 || !c1) return;
+      const party = state.trendChangeParty;
+      legend = {title:`Trend change · ${party==="D"?"Dem":"Rep"} · ${c0.label} → ${c1.label}`, ticks:["shift R","0","shift D"], gradient: gradientCss(PAL_MARGIN)};
+      valueFn = (rowIdx) => {
+        const d = trendIndex(c1, rowIdx, party) - trendIndex(c0, rowIdx, party);
+        return (party==="R") ? -d/50 : d/50;
+      };
+      vmin = -1; vmax = 1;
+      palette = PAL_MARGIN;
+    }
+
+    legendTitle.textContent = legend.title;
+    legendBar.style.background = legend.gradient;
+    legendTicks.innerHTML = legend.ticks.map(t=>`<div>${escapeHtml(t)}</div>`).join("");
+
+    const inv = 1.0 / (vmax - vmin);
+    const palN1 = palette.length - 1;
+    const prev = state.prevBin;
+
+    let updates = 0;
+    for (let i=0;i<paths.length;i++){
+      const rowIdx = join[i];
+      if (rowIdx === -1){
+        if (prev[i] !== -30000){
+          paths[i].style.fill = FILL_MISS;
+          prev[i] = -30000;
+          updates++;
+        }
+        continue;
+      }
+      const v = valueFn(rowIdx);
+      if (!Number.isFinite(v)){
+        if (prev[i] !== -30000){
+          paths[i].style.fill = FILL_MISS;
+          prev[i] = -30000;
+          updates++;
+        }
+        continue;
+      }
+      let t = clamp((v - vmin) * inv, 0, 1);
+      // Contrast boost: diverging maps around mid; sequential boosts low-end.
+      if (palette === PAL_MARGIN) {
+        const z = (t * 2) - 1;            // [-1,1]
+        const zg = gammaSigned(z, 0.55);  // stronger color near center
+        t = (zg + 1) * 0.5;
+      } else {
+        t = gamma01(t, 0.70);
+      }
+      const bin = (t * palN1 + 0.5) | 0;
+      if (bin !== prev[i]){
+        paths[i].style.fill = palette[bin];
+        prev[i] = bin;
+        updates++;
+      }
+    }
+    setStatus(`ready (${updates} updates)`, true);
+  }
+
+  function gradientCss(palette){
+    const stops = 12;
+    const parts = [];
+    for (let i=0;i<=stops;i++){
+      const t = i/stops;
+      const idx = Math.round(t*(palette.length-1));
+      parts.push(`${palette[idx]} ${Math.round(t*100)}%`);
+    }
+    return `linear-gradient(90deg, ${parts.join(",")})`;
+  }
+
+  function margin(d,r){
+    const t = d + r;
+    return t>0 ? (d - r) / t : 0;
+  }
+
+  function trendIndex(contest, rowIdx, party){
+    const d = contest.demArr[rowIdx];
+    const r = contest.repArr[rowIdx];
+    const t = d + r;
+    if (t<=0) return NaN;
+    const p = (party==="D") ? (d/t) : (r/t);
+    const s = (party==="D") ? contest.stateDemPct : contest.stateRepPct;
+    if (s<=0) return NaN;
+    return 50 * (p / s);
+  }
+
+  // ---------- Tooltip / hover ----------
+  function onMove(ev){
+    const target = ev.target.closest ? ev.target.closest("path") : null;
+    if (!target || target.ownerSVGElement !== state.svg) { clearHover(); hideTip(); return; }
+    if (state.lastHover !== target){
+      clearHover();
+      target.classList.add("hover");
+      state.lastHover = target;
+    }
+    const idx = indexOfPath(target);
+    if (idx < 0) { hideTip(); return; }
+    const rowIdx = state.joinIndex[idx];
+    if (rowIdx === -1) { hideTip(); return; }
+    const info = buildInfo(rowIdx);
+    showTip(ev, info);
+  }
+
+  function onClick(ev){ onMove(ev); }
+
+  function indexOfPath(pathEl){
+    if (pathEl.__idx !== undefined) return pathEl.__idx;
+    const paths = state.paths;
+    for (let i=0;i<paths.length;i++){
+      if (paths[i] === pathEl) { pathEl.__idx = i; return i; }
+    }
+    pathEl.__idx = -1;
+    return -1;
+  }
+
+  function clearHover(){
+    if (state.lastHover){
+      state.lastHover.classList.remove("hover");
+      state.lastHover = null;
+    }
+  }
+
+  function showTip(ev, info){
+    tip.style.left = ev.clientX + "px";
+    tip.style.top = ev.clientY + "px";
+    tip.innerHTML = info;
+    tip.classList.add("show");
+  }
+  function hideTip(){ tip.classList.remove("show"); }
+
+  function buildInfo(rowIdx){
+    const r = state.data[rowIdx];
+    const keyCol = state.keyCol;
+    const key = String(r[keyCol] ?? "");
+    const name = (r.Name !== undefined) ? String(r.Name) : "";
+
+    const tab = state.tab;
+    let block = "";
+    if (tab==="results"){
+      const c = getContest(state.contestKey);
+      if (c){
+        const d = c.demArr[rowIdx], rr = c.repArr[rowIdx];
+        const t = d+rr;
+        const m = margin(d, rr);
+        block = `<div class="p">${escapeHtml(c.label)}<br><span class="mono">D ${d.toFixed(0)} · R ${rr.toFixed(0)} · margin ${(m*100).toFixed(2)}%</span></div>`;
+      }
+    } else if (tab==="swing"){
+      const c0 = getContest(state.swingFrom), c1 = getContest(state.swingTo);
+      if (c0 && c1){
+        const sw = margin(c1.demArr[rowIdx], c1.repArr[rowIdx]) - margin(c0.demArr[rowIdx], c0.repArr[rowIdx]);
+        block = `<div class="p">${escapeHtml(c0.label)} → ${escapeHtml(c1.label)}<br><span class="mono">margin swing ${(sw*100).toFixed(2)}%</span></div>`;
+      }
+    } else if (tab==="trend"){
+      const c = getContest(state.trendContest);
+      if (c){
+        const party = state.trendParty;
+        const idx = trendIndex(c, rowIdx, party);
+        block = `<div class="p">${escapeHtml(c.label)}<br><span class="mono">${party} index ${idx.toFixed(1)}</span></div>`;
+      }
+    } else if (tab==="trendChange"){
+      const c0 = getContest(state.trendFrom), c1 = getContest(state.trendTo);
+      if (c0 && c1){
+        const party = state.trendChangeParty;
+        const idx0 = trendIndex(c0, rowIdx, party);
+        const idx1 = trendIndex(c1, rowIdx, party);
+        const d = idx1 - idx0;
+        block = `<div class="p">${escapeHtml(c0.label)} → ${escapeHtml(c1.label)}<br><span class="mono">${party} index Δ ${d.toFixed(1)}</span></div>`;
+      }
+    }
+
+    return `
+      <div class="h">${escapeHtml(name || "Precinct")}</div>
+      <div class="p"><span class="mono">${escapeHtml(keyCol)}=${escapeHtml(key)}</span></div>
+      ${block}
+    `;
+  }
+
+  // ---------- IO ----------
+  async function fetchText(url){
+    const res = await fetch(url, {cache:"no-store"});
+    if (!res.ok) throw new Error(`Fetch failed (${res.status}) for ${url}`);
+    return await res.text();
+  }
+
+  function parseSvg(svgText){
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) throw new Error("Invalid SVG (no <svg> root).");
+    doc.querySelectorAll("script").forEach(n => n.remove());
+    return svg;
+  }
+
+  function parseCsv(csvText){
+    const parsed = Papa.parse(csvText, {header:true, dynamicTyping:true, skipEmptyLines:true});
+    if (parsed.errors && parsed.errors.length){
+      const e = parsed.errors[0];
+      throw new Error(`CSV parse error: ${e.message} at row ${e.row}`);
+    }
+    const rows = parsed.data;
+    rows.columns = parsed.meta.fields || [];
+    return rows;
+  }
+
+  async function firstAvailable(urls){
+    for (const u of urls){
+      try{
+        const res = await fetch(u, {method:"HEAD", cache:"no-store"});
+        if (res.ok) return u;
+      } catch(_){ }
+    }
+    return null;
+  }
+
+  function fatal(err){
+    console.error(err);
+    const msg = (err && err.stack) ? err.stack : String(err);
+    showOverlay("Error", msg, {closable:true, reload:true});
+    setStatus("error (see overlay)", false);
+  }
+})();
+</script>
+</body>
+</html>
