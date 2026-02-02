@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polls</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇺🇸</text></svg>">
+  
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  
+  <style>
+    :root {
+      --bg-body: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      
+      /* Brand Colors */
+      --primary: #2563eb;   /* Dem Blue */
+      --danger: #dc2626;    /* Rep Red */
+      --success: #16a34a;   /* Approve Green */
+      --neutral: #475569;
+    }
+
+    /* Dark Mode Overrides */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-body: #020617;
+        --bg-card: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border: #334155;
+        --primary: #60a5fa;
+        --danger: #f87171;
+        --success: #4ade80;
+      }
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--text-main);
+    }
+
+    header .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+      font-size: 0.875rem;
+    }
+
+    label.toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    label.toggle input {
+      accent-color: var(--primary);
+      width: 1rem;
+      height: 1rem;
+      margin-right: 0.5rem;
+    }
+
+    /* Layout */
+    main {
+      padding: 2rem 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+      transition: box-shadow 0.2s;
+    }
+    
+    .card:hover {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      margin: 0 0 1.25rem 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Charts */
+    .plot-container {
+      width: 100%;
+      height: 450px;
+      position: relative;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+
+    /* Stats Grid */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-box {
+      background: var(--bg-body);
+      padding: 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label { 
+      font-size: 0.7rem; 
+      color: var(--text-muted); 
+      text-transform: uppercase; 
+      letter-spacing: 0.05em; 
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-value { 
+      font-size: 1.5rem; 
+      font-weight: 700; 
+      line-height: 1.2;
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .trend-indicator {
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.1rem 0.4rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .trend-up { color: var(--success); background: rgba(22, 163, 74, 0.1); }
+    .trend-down { color: var(--danger); background: rgba(220, 38, 38, 0.1); }
+    .trend-flat { color: var(--text-muted); background: rgba(148, 163, 184, 0.1); }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      margin-top: auto;
+    }
+
+    .small {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    #pollsterList {
+      max-height: 120px;
+      overflow-y: auto;
+      padding: 0.75rem;
+      background: var(--bg-body);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      margin-top: 0.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.125rem 0.625rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    /* Alerts */
+    .alert {
+      padding: 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+      display: none;
+      animation: fadeIn 0.3s ease-in;
+    }
+    .alert.info { background: rgba(37, 99, 235, 0.1); color: var(--primary); border: 1px solid rgba(37, 99, 235, 0.2); }
+    .alert.error { background: rgba(220, 38, 38, 0.1); color: var(--danger); border: 1px solid rgba(220, 38, 38, 0.2); }
+    .alert.warn { background: rgba(245, 158, 11, 0.1); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.2); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* Loading Spinner */
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    #debugCard { display: none; margin-top: 2rem; }
+    #debugOut { background: #000; color: #0f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+
+  
+    /* Customize panels */
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--bg-body);
+      color: var(--text-main);
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.6rem;
+      font-weight: 650;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: transform 0.05s ease, box-shadow 0.2s ease, background 0.2s ease;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary {
+      background: transparent;
+    }
+
+    .custom-panel {
+      margin: 1rem 0 1.25rem 0;
+      padding: 1rem;
+      border: 1px dashed var(--border);
+      border-radius: 0.75rem;
+      background: var(--bg-body);
+    }
+    .custom-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.85rem 1rem;
+      align-items: end;
+    }
+    .custom-item .custom-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 650;
+      margin-bottom: 0.35rem;
+    }
+    .custom-item .custom-help {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      line-height: 1.35;
+    }
+    .custom-row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .custom-row input[type="number"]{
+      width: 5.25rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.6rem;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+    .custom-row input[type="range"]{
+      flex: 1;
+      min-width: 160px;
+    }
+    label.custom-check {
+      display: flex;
+      gap: 0.55rem;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 650;
+      color: var(--text-main);
+      font-size: 0.9rem;
+    }
+    label.custom-check input {
+      accent-color: var(--primary);
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+    }
+
+    .plot-container.diff {
+      height: 240px;
+      margin-top: 1rem;
+      display: none;
+    }
+
+  
+    /* --- All polls table --- */
+    .table-wrap { overflow:auto; max-height: 520px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; }
+    table.allpolls { width:100%; border-collapse: collapse; font-size: 12px; }
+    table.allpolls th, table.allpolls td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: top; }
+    table.allpolls th { position: sticky; top: 0; background: rgba(20,20,20,0.85); backdrop-filter: blur(6px); text-align: left; font-weight: 600; }
+    .controlsRow { display:flex; gap:10px; flex-wrap: wrap; align-items:center; margin: 10px 0 12px; }
+    .controlsRow input, .controlsRow select {
+      background: rgba(255,255,255,0.06);
+      color: inherit;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+      min-width: 220px;
+    }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+</style>
+</head>
+
+<body>
+
+  <header>
+    <div>
+      <h1>Polls</h1>
+      <div class="subtitle">Polling Aggregation powered by VoteHub</div>
+    </div>
+    <div class="controls">
+      <div id="loadingIndicator" style="display:none; color: var(--primary);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+      </div>
+      <label class="toggle" title="Toggle between a strict quality filter and all data">
+        <input type="checkbox" id="toggleFilter" checked onchange="app.refreshViews()">
+        <span>Filter</span>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <div id="globalStatus" class="alert info">Initializing...</div>
+
+    <div class="card">
+      
+      <h2>
+        <div style="display:flex; flex-direction:column; gap:0.15rem;">
+          <div>Presidential Approval</div>
+          <span class="small" style="font-weight: 400;">Approve vs Disapprove</span>
+        </div>
+        <button class="btn" type="button" onclick="app.toggleCustomize('approval')">Customize</button>
+      </h2>
+      
+      <div class="stats-row" id="approvalStats">
+        <div class="stat-box">
+          <div class="stat-label">Approve Avg</div>
+          <div class="stat-value">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Disapprove Avg</div>
+          <div class="stat-value">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Total Polls</div>
+          <div class="stat-value">--</div>
+        </div>
+      </div>
+
+      
+
+      <div id="approvalCustomizePanel" class="custom-panel" style="display:none;">
+        <div class="custom-grid">
+          <div class="custom-item">
+            <div class="custom-label">Moving average window (days)</div>
+            <div class="custom-row">
+              <input id="approvalMADaysRange" type="range" min="3" max="120" step="1" value="14">
+              <input id="approvalMADays" type="number" min="3" max="365" step="1" value="14">
+            </div>
+            <div class="custom-help">If “Auto min polls” is enabled, the window expands per day until enough polls exist.</div>
+          </div>
+
+          <div class="custom-item">
+            <div class="custom-label">Auto min polls/day</div>
+            <div class="custom-row">
+              <label class="custom-check" style="font-weight:650;">
+                <input type="checkbox" id="approvalAutoMin">
+                <span>Enable</span>
+              </label>
+              <span class="small">Min polls:</span>
+              <input id="approvalMinPolls" type="number" min="3" max="60" step="1" value="12">
+            </div>
+            <div class="custom-help">For each day, use the most recent N polls (expands back in time as needed).</div>
+          </div>
+
+          <div class="custom-item">
+            <div class="custom-label">Compare</div>
+            <div class="custom-row">
+              <label class="custom-check" style="font-weight:650;">
+                <input type="checkbox" id="approvalCompare">
+                <span>Show filtered + all sources</span>
+              </label>
+              <label class="custom-check" style="font-weight:650;">
+                <input type="checkbox" id="approvalShowDiff">
+                <span>Show difference</span>
+              </label>
+            </div>
+            <div class="custom-help">“Filtered” = allowlist in the Trusted Pollsters card. “All” = everything in polls.json.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="approvalChart" class="plot-container"></div>
+      <div id="approvalDiffChart" class="plot-container diff"></div>
+      <div class="small" style="margin-top: 0.5rem">
+        Includes "Strongly" variations where available.
+      </div>
+    </div>
+    
+    <div class="card">
+      
+      <h2>
+        <div style="display:flex; flex-direction:column; gap:0.15rem;">
+          <div>Generic Ballot</div>
+          <span class="small" style="font-weight: 400;">Dem vs Rep</span>
+        </div>
+        <button class="btn" type="button" onclick="app.toggleCustomize('gb')">Customize</button>
+      </h2>
+      
+      <div class="stats-row" id="gbStats">
+        <div class="stat-box">
+          <div class="stat-label">Democratic Avg</div>
+          <div class="stat-value">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Republican Avg</div>
+          <div class="stat-value">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Total Polls</div>
+          <div class="stat-value">--</div>
+        </div>
+      </div>
+
+      
+
+      <div id="gbCustomizePanel" class="custom-panel" style="display:none;">
+        <div class="custom-grid">
+          <div class="custom-item">
+            <div class="custom-label">Moving average window (days)</div>
+            <div class="custom-row">
+              <input id="gbMADaysRange" type="range" min="3" max="180" step="1" value="30">
+              <input id="gbMADays" type="number" min="3" max="365" step="1" value="30">
+            </div>
+            <div class="custom-help">If “Auto min polls” is enabled, the window expands per day until enough polls exist.</div>
+          </div>
+
+          <div class="custom-item">
+            <div class="custom-label">Auto min polls/day</div>
+            <div class="custom-row">
+              <label class="custom-check" style="font-weight:650;">
+                <input type="checkbox" id="gbAutoMin">
+                <span>Enable</span>
+              </label>
+              <span class="small">Min polls:</span>
+              <input id="gbMinPolls" type="number" min="3" max="60" step="1" value="12">
+            </div>
+            <div class="custom-help">For each day, use the most recent N polls (expands back in time as needed).</div>
+          </div>
+
+          <div class="custom-item">
+            <div class="custom-label">Compare</div>
+            <div class="custom-row">
+              <label class="custom-check" style="font-weight:650;">
+                <input type="checkbox" id="gbCompare">
+                <span>Show filtered + all sources</span>
+              </label>
+              <label class="custom-check" style="font-weight:650;">
+                <input type="checkbox" id="gbShowDiff">
+                <span>Show difference</span>
+              </label>
+            </div>
+            <div class="custom-help">“Filtered” = allowlist in the Trusted Pollsters card. “All” = everything in polls.json.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="gbChart" class="plot-container"></div>
+      <div id="gbDiffChart" class="plot-container diff"></div>
+      <div class="small" style="margin-top: 0.5rem">
+        Hover over dots to see poll details. Hover over chart area to track trends.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Trusted Pollsters</h2>
+      <div class="small">
+        <strong>Current Mode:</strong> <span id="filterModeText">Filtered List</span>
+        <br>
+        Showing polls from the following sources:
+      </div>
+      <div id="pollsterList"></div>
+    </div>
+
+
+    <div class="card" id="allPollsCard">
+      <h2>All Polls (Race to the WH)</h2>
+      <div class="small">This table is built from <span class="mono">polls.json</span>. Use filters to slice by election type.</div>
+
+      <div class="controlsRow">
+        <input id="allSearch" type="text" placeholder="Search race / pollster / text">
+        <select id="allCategory">
+          <option value="all">All categories</option>
+        </select>
+        <select id="allLimit">
+          <option value="150">150 rows</option>
+          <option value="300" selected>300 rows</option>
+          <option value="600">600 rows</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="allpolls" id="allPollsTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Race</th>
+              <th>Pollster</th>
+              <th>Result</th>
+              <th>Link</th>
+            </tr>
+          </thead>
+          <tbody id="allPollsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="debugCard">
+      <h2>Debug Log</h2>
+      <pre id="debugOut" class="small"></pre>
+    </div>
+  </main>
+
+  <footer>
+    <p>VoteHub Dashboard &copy; <span id="year"></span>. Data aggregated daily from public polling sources.</p>
+    <p class="small">Disclaimer: Polls are snapshots in time. Rolling averages may lag behind breaking news.</p>
+  </footer>
+
+<script>
+/**
+ * VoteHub Dashboard - Enhanced v3 (Local Data Edition)
+ * Reads from polls.json generated by GitHub Actions.
+ */
+
+const CONFIG = {
+  approvalWindow: 14,
+  gbWindow: 30,
+  debug: new URLSearchParams(location.search).has("debug")
+};
+
+const CUSTOM = {
+  approval: { maDays: 14, autoMin: false, minPolls: 12, compare: false, showDiff: false },
+  gb:       { maDays: 30, autoMin: false, minPolls: 12, compare: false, showDiff: false }
+};
+
+document.getElementById("year").textContent = new Date().getFullYear();
+
+// State
+const STATE = {
+  allPolls: [],
+  approvalData: [],
+  gbData: [],
+  isDemoMode: false,
+  filterStrict: true
+};
+
+/* -------------------- Pollster Allowlist -------------------- */
+const ALLOWED_POLLSTERS = [
+  { label: "YouGov", pattern: /yougov/ },
+  { label: "Verasight", pattern: /verasight/ },
+  { label: "Ipsos", pattern: /ipsos/ },
+  { label: "ARG", pattern: /americanresearchgroup|arg\b/ },
+  { label: "TIPP", pattern: /tipp/ },
+  { label: "Emerson", pattern: /emerson/ },
+  { label: "Gallup", pattern: /gallup/ },
+  { label: "Marist", pattern: /marist/ },
+  { label: "Quinnipiac", pattern: /quinnipiac/ },
+  { label: "AP-NORC", pattern: /apnorc|ap\-norc|norc/ },
+  { label: "Marquette", pattern: /marquette/ },
+  { label: "CNN/SSRS", pattern: /cnnssrs|cnn\/ssrs|ssrs/ },
+  { label: "AtlasIntel", pattern: /atlasintel|atlas/ },
+  { label: "Beacon/Shaw", pattern: /beaconresearch|shaw/ },
+  { label: "Hart/POS", pattern: /hartresearch|publicopinionstrategies/ },
+  { label: "Pew", pattern: /pewresearch|pew/ },
+  { label: "SurveyMonkey", pattern: /surveymonkey/ },
+  { label: "Leger", pattern: /leger/ },
+  { label: "UMass", pattern: /massachusetts|umass|departmentofpoliticalscience/ },
+  { label: "NYT/Siena", pattern: /siena|newyorktimes/ },
+  { label: "Fox News", pattern: /foxnews/ },
+  { label: "WSJ", pattern: /wallstreetjournal|wsj/ },
+];
+
+/* -------------------- Utilities -------------------- */
+const $ = (id) => document.getElementById(id);
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+
+function log(msg) {
+  if(CONFIG.debug) {
+    $('debugCard').style.display = 'block';
+    $('debugOut').textContent += `[${new Date().toISOString().slice(11,19)}] ${msg}\n`;
+  }
+}
+
+function showStatus(msg, type = 'info') {
+  const el = $('globalStatus');
+  el.textContent = msg;
+  el.className = `alert ${type}`;
+  el.style.display = 'block';
+  // Auto hide success messages after 5s
+  if(type === 'success') setTimeout(() => el.style.display = 'none', 5000);
+}
+
+function norm(s) {
+  return String(s || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "");
+}
+
+function isAllowed(pollsterName, strict = STATE.filterStrict) {
+  if (!strict) return true;
+  const n = norm(pollsterName);
+  return ALLOWED_POLLSTERS.some(x => x.pattern.test(n));
+}
+
+function parseDate(s) {
+  return new Date(`${s}T00:00:00Z`);
+}
+
+
+function parseRTWDateText(dateText) {
+  // Best-effort parsing for strings like "Jan 12-15, 2026" or "Jan 12, 2026" or "01/12 - 01/15".
+  if (!dateText) return null;
+  const t = String(dateText).trim();
+  const nowY = new Date().getFullYear();
+
+  const m = t.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?(?:,?\s*(\d{4}))?/i);
+  if (m) {
+    const mon = m[1].slice(0,3);
+    const day = Number(m[3] || m[2]);
+    const year = Number(m[4] || nowY);
+    const d = new Date(`${mon} ${day}, ${year} 12:00:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const m2 = t.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?:\s*[-–]\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?)?/);
+  if (m2) {
+    const mo = Number(m2[4] || m2[1]);
+    const da = Number(m2[5] || m2[2]);
+    const yRaw = m2[6] || m2[3];
+    const y = yRaw ? Number(String(yRaw).length === 2 ? `20${yRaw}` : yRaw) : nowY;
+    const d = new Date(y, mo - 1, da, 12, 0, 0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function findChoicePctFromResults(results, needles) {
+  if (!Array.isArray(results)) return null;
+  const ns = needles.map(x => String(x).toLowerCase());
+  for (const r of results) {
+    const c = String(r.choice || '').toLowerCase();
+    if (ns.some(n => c.includes(n))) {
+      const v = Number(r.pct);
+      return Number.isFinite(v) ? v : null;
+    }
+  }
+  return null;
+}
+
+/* -------------------- Math & Logic -------------------- */
+
+function calculateRollingAvg(points, windowDays) {
+  if (!points.length) return [];
+  const sorted = points.slice().sort((a, b) => a.date - b.date);
+  const msPerDay = 86400000;
+
+  const times = sorted.map(p => p.date.getTime());
+  const prefix = [0];
+  for (let i = 0; i < sorted.length; i++) prefix.push(prefix[prefix.length - 1] + sorted[i].value);
+
+  const output = [];
+  const startTs = times[0];
+  const endTs = times[times.length - 1];
+
+  let idx = 0;   // points <= t
+  let left = 0;  // points <= windowStart (exclusive by condition)
+  for (let t = startTs; t <= endTs; t += msPerDay) {
+    while (idx < times.length && times[idx] <= t) idx++;
+    const windowStart = t - (windowDays * msPerDay);
+    while (left < idx && times[left] <= windowStart) left++;
+
+    const count = idx - left;
+    if (count > 0) {
+      const sum = prefix[idx] - prefix[left];
+      output.push({ date: new Date(t), value: sum / count, count, windowDays });
+    }
+  }
+  return output;
+}
+
+function calculateRollingAvgMinPolls(points, minPolls) {
+  if (!points.length) return [];
+  const sorted = points.slice().sort((a, b) => a.date - b.date);
+  const msPerDay = 86400000;
+
+  const times = sorted.map(p => p.date.getTime());
+  const prefix = [0];
+  for (let i = 0; i < sorted.length; i++) prefix.push(prefix[prefix.length - 1] + sorted[i].value);
+
+  const output = [];
+  const startTs = times[0];
+  const endTs = times[times.length - 1];
+
+  let idx = 0; // points <= t
+  for (let t = startTs; t <= endTs; t += msPerDay) {
+    while (idx < times.length && times[idx] <= t) idx++;
+    if (idx === 0) continue;
+
+    let startIndex = Math.max(0, idx - Math.max(1, minPolls));
+    const startTime = times[startIndex];
+    // Include all polls that happened on the start day (avoid arbitrary cutoff inside same-day clusters)
+    while (startIndex > 0 && times[startIndex - 1] === startTime) startIndex--;
+
+    const count = idx - startIndex;
+    const sum = prefix[idx] - prefix[startIndex];
+    const windowDays = Math.max(0, Math.round((t - startTime) / msPerDay));
+    output.push({ date: new Date(t), value: sum / count, count, windowDays });
+  }
+  return output;
+}
+
+function toDayKey(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function diffSeries(seriesA, seriesB) {
+  const mapB = new Map(seriesB.map(p => [toDayKey(p.date), p]));
+  const out = [];
+  for (const a of seriesA) {
+    const k = toDayKey(a.date);
+    const b = mapB.get(k);
+    if (!b) continue;
+    out.push({
+      date: a.date,
+      value: a.value - b.value,
+      countA: a.count ?? null,
+      countB: b.count ?? null
+    });
+  }
+  return out;
+}
+
+function getAnswer(poll, keys) {
+  if(!poll.answers) return null;
+  for (const ans of poll.answers) {
+    const c = norm(ans.choice);
+    // Avoid false positives
+    if (c.includes('disapprove') && keys.some(k => norm(k).includes('approve') && !norm(k).includes('dis'))) {
+        continue;
+    }
+    for (const key of keys) {
+      if (c.includes(norm(key))) return parseFloat(ans.pct);
+    }
+  }
+  return null;
+}
+
+function getTrendHTML(series) {
+  if (series.length < 2) return '';
+  const current = series[series.length - 1].value;
+  const lookbackIndex = Math.max(0, series.length - 8); 
+  const past = series[lookbackIndex].value;
+  const diff = current - past;
+  
+  let arrow, cls;
+  if (diff > 0.5) { arrow = '↑'; cls = 'trend-up'; }
+  else if (diff < -0.5) { arrow = '↓'; cls = 'trend-down'; }
+  else { arrow = '→'; cls = 'trend-flat'; }
+  
+  return `<span class="trend-indicator ${cls}" title="${diff > 0 ? '+' : ''}${diff.toFixed(1)} since last week">${arrow}</span>`;
+}
+
+/* -------------------- Mock Data (Fallback) -------------------- */
+function generateMockData(type) {
+  const data = [];
+  const pollsters = ALLOWED_POLLSTERS.map(p => p.label).concat(["Unknown Polling", "Generic Analytics"]);
+  const now = new Date();
+  let value = type === 'approval' ? 42 : 2; 
+  
+  for (let i = 365; i >= 0; i--) {
+    const date = new Date(now.getTime() - i * 86400000);
+    value += (Math.random() - 0.5) * 1.5; 
+    const pollsToday = Math.floor(Math.random() * 2.5); 
+    
+    for (let j = 0; j < pollsToday; j++) {
+      const variance = (Math.random() - 0.5) * 6;
+      const pollVal = value + variance;
+      const pollster = pollsters[Math.floor(Math.random() * pollsters.length)];
+      
+      let entry = {
+        date: date,
+        pollster: pollster,
+        sample_size: 500 + Math.floor(Math.random() * 1000),
+        url: "#"
+      };
+
+      if (type === 'approval') {
+        entry.approve = pollVal;
+        entry.disapprove = 100 - pollVal - 5; 
+      } else {
+        const dem = 46 + (pollVal / 2);
+        const rep = 46 - (pollVal / 2);
+        entry.dem = dem;
+        entry.rep = rep;
+      }
+      data.push(entry);
+    }
+  }
+  return data;
+}
+
+/* -------------------- Visualization -------------------- */
+
+function updateStatsDual(id, count, s1MA, s2MA) {
+  const container = $(id);
+  if (!container) return;
+
+  const box1 = container.children[0].children[1];
+  const box2 = container.children[1].children[1];
+  const box3 = container.children[2].children[1];
+
+  const latest1 = s1MA.length ? s1MA[s1MA.length-1].value : null;
+  const latest2 = s2MA.length ? s2MA[s2MA.length-1].value : null;
+
+  if (latest1 !== null) {
+    box1.innerHTML = `${latest1.toFixed(1)}% ${getTrendHTML(s1MA)}`;
+    box1.style.color = id === 'gbStats' ? 'var(--primary)' : 'var(--success)';
+  } else box1.textContent = "--";
+
+  if (latest2 !== null) {
+    box2.innerHTML = `${latest2.toFixed(1)}% ${getTrendHTML(s2MA)}`;
+    box2.style.color = 'var(--danger)';
+  } else box2.textContent = "--";
+
+  box3.textContent = count;
+}
+
+function renderDualChart(divId, datasets, yTitle) {
+  const traces = [];
+
+  datasets.forEach(ds => {
+    const rawOpacity = (ds.rawOpacity != null) ? ds.rawOpacity : 0.35;
+    const markerSymbol = ds.markerSymbol || 'circle';
+
+    // Raw polls (dots)
+    if (ds.raw && ds.raw.length) {
+      traces.push({
+        x: ds.raw.map(p => p.date),
+        y: ds.raw.map(p => p.value),
+        mode: 'markers',
+        type: 'scatter',
+        name: ds.name + ' (Polls)',
+        marker: {
+          color: ds.color,
+          opacity: rawOpacity,
+          size: 7,
+          symbol: markerSymbol,
+          line: { width: 1, color: '#fff' }
+        },
+        text: ds.raw.map(p =>
+          `<b>${p.pollster}</b><br>${p.date.toISOString().slice(0,10)}<br>${ds.name}: ${p.value.toFixed(1)}%<br>N=${p.sample_size}`
+        ),
+        hovertemplate: '%{text}<extra></extra>',
+        showlegend: false
+      });
+    }
+
+    // Rolling average (line)
+    if (ds.ma && ds.ma.length) {
+      traces.push({
+        x: ds.ma.map(p => p.date),
+        y: ds.ma.map(p => p.value),
+        mode: 'lines',
+        name: ds.name,
+        line: { color: ds.color, width: ds.lineWidth || 3, dash: ds.lineDash || 'solid' },
+        customdata: ds.ma.map(p => [p.count ?? null, p.windowDays ?? ds.windowDays ?? null]),
+        hovertemplate:
+          `<b>${ds.name} (Avg)</b><br>` +
+          `%{x|%Y-%m-%d}<br>` +
+          `Value: %{y:.1f}%<br>` +
+          `Polls: %{customdata[0]}<br>` +
+          `Window: %{customdata[1]}d<extra></extra>`
+      });
+    }
+  });
+
+  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)';
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const spikeColor = isDark ? '#475569' : '#94a3b8';
+
+  const layout = {
+    autosize: true,
+    margin: { t: 20, r: 20, l: 40, b: 40 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'inherit', color: textColor },
+    xaxis: {
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickformat: '%b %Y',
+      showspikes: true,
+      spikemode: 'across',
+      spikethickness: 1,
+      spikecolor: spikeColor,
+      spikedash: 'solid',
+      spikesnap: 'cursor'
+    },
+    yaxis: {
+      title: yTitle,
+      gridcolor: gridColor,
+      zeroline: false
+    },
+    showlegend: true,
+    legend: { orientation: 'h', y: 1.12, x: 0 },
+    hovermode: 'closest',
+    dragmode: 'pan'
+  };
+
+  const config = {
+    responsive: true,
+    displayModeBar: false,
+    scrollZoom: false
+  };
+
+  Plotly.react(divId, traces, layout, config);
+}
+
+function renderDiffChart(divId, seriesList, yTitle) {
+  const traces = seriesList.map(s => ({
+    x: (s.series || []).map(p => p.date),
+    y: (s.series || []).map(p => p.value),
+    mode: 'lines',
+    type: 'scatter',
+    name: s.name,
+    line: { color: s.color, width: 2 },
+    customdata: (s.series || []).map(p => [p.countA ?? null, p.countB ?? null]),
+    hovertemplate:
+      `<b>${s.name}</b><br>` +
+      `%{x|%Y-%m-%d}<br>` +
+      `Δ: %{y:.2f}pp<br>` +
+      `Polls (filtered/all): %{customdata[0]}/%{customdata[1]}<extra></extra>`
+  }));
+
+  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)';
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const spikeColor = isDark ? '#475569' : '#94a3b8';
+
+  const layout = {
+    autosize: true,
+    margin: { t: 15, r: 20, l: 40, b: 35 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'inherit', color: textColor },
+    xaxis: {
+      gridcolor: gridColor,
+      zerolinecolor: gridColor,
+      tickformat: '%b %Y',
+      showspikes: true,
+      spikemode: 'across',
+      spikethickness: 1,
+      spikecolor: spikeColor,
+      spikedash: 'solid',
+      spikesnap: 'cursor'
+    },
+    yaxis: {
+      title: yTitle,
+      gridcolor: gridColor,
+      zeroline: true,
+      zerolinecolor: gridColor
+    },
+    showlegend: true,
+    legend: { orientation: 'h', y: 1.15, x: 0 },
+    hovermode: 'closest',
+    dragmode: 'pan'
+  };
+
+  const config = {
+    responsive: true,
+    displayModeBar: false,
+    scrollZoom: false
+  };
+
+  Plotly.react(divId, traces, layout, config);
+}
+
+
+/* -------------------- Main App -------------------- */
+
+const app = {
+  async init() {
+    $('loadingIndicator').style.display = 'block';
+    
+    // Render Pollster Tags
+    $('pollsterList').innerHTML = ALLOWED_POLLSTERS.map(p => 
+      `<span class="tag">${p.label}</span>`
+    ).join(" ");
+
+    try {
+// FETCH LOCAL DATA (polls.json)
+      const candidates = [
+        new URL('polls.json', window.location.href).href,
+        './polls.json',
+        'polls.json',
+        '../polls.json'
+      ];
+
+      let res = null;
+      let usedUrl = null;
+      let lastErr = null;
+
+      for (const u of candidates) {
+        try {
+          const r = await fetch(u, { cache: 'no-store' });
+          if (r && r.ok) { res = r; usedUrl = u; break; }
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+
+      if (!res) throw (lastErr || new Error('Could not load polls.json'));
+
+      if (!res.ok) throw new Error("Could not load local data file.");
+      
+      const json = await res.json();
+      
+      // polls.json can come from VoteHub (genericBallot/approval arrays) OR from RaceToTheWH (single polls[] array).
+      const allPolls = Array.isArray(json.polls) ? json.polls : [];
+      STATE.allPolls = allPolls;
+
+      // Back-compat with older VoteHub-shaped JSON:
+      const gbList = Array.isArray(json.genericBallot) ? json.genericBallot
+                    : allPolls.filter(p => (p.category === 'generic_ballot') || /generic ballot/i.test(p.race || p.results_text || ''));
+      const appList = Array.isArray(json.approval) ? json.approval
+                    : allPolls.filter(p => (p.category === 'approval') || /approval/i.test(p.race || p.results_text || ''));
+
+      if ((gbList.length === 0 && appList.length === 0) && (!STATE.allPolls || STATE.allPolls.length === 0)) throw new Error("JSON file was empty.");
+
+      // Normalize Data
+      STATE.gbData = this.normalizeGB(gbList);
+      STATE.approvalData = this.normalizeApproval(appList);
+
+      this.buildAllPollsUI();
+      this.renderAllPollsTable();
+
+      $('allSearch')?.addEventListener('input', () => this.renderAllPollsTable());
+      $('allCategory')?.addEventListener('change', () => this.renderAllPollsTable());
+      $('allLimit')?.addEventListener('change', () => this.renderAllPollsTable());
+
+      // Success Message
+      if (json.updatedAt || json.updated_at) {
+        const dateStr = json.updatedAt || json.updated_at;
+        const date = new Date(dateStr).toLocaleString();
+        showStatus(`Data updated: ${date}`, "success");
+      } else {
+        showStatus("Data loaded successfully.", "success");
+      }
+
+    } catch (e) {
+      console.warn("Local load failed, falling back to Demo", e);
+      STATE.isDemoMode = true;
+      showStatus("Could not find polls.json. Using DEMO data.", "warn");
+      STATE.gbData = generateMockData('gb');
+      STATE.approvalData = generateMockData('approval');
+    }
+
+    $('loadingIndicator').style.display = 'none';
+    this.initCustomControls();
+    this.refreshViews();
+    
+    window.addEventListener('resize', () => {
+      ['gbChart','approvalChart','gbDiffChart','approvalDiffChart'].forEach(id => {
+        try { if ($(id)) Plotly.Plots.resize(id); } catch(e) {}
+      });
+    });
+  },
+
+  toggleCustomize(which) {
+    const panel = $(which + 'CustomizePanel');
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+  },
+
+  initCustomControls() {
+    const setup = (which, defaults) => {
+      const days = $(which + 'MADays');
+      const daysRange = $(which + 'MADaysRange');
+      const auto = $(which + 'AutoMin');
+      const minPolls = $(which + 'MinPolls');
+      const compare = $(which + 'Compare');
+      const showDiff = $(which + 'ShowDiff');
+
+      if (!days || !daysRange || !auto || !minPolls || !compare || !showDiff) return;
+
+      // Seed defaults (only once per load)
+      CUSTOM[which].maDays = defaults.maDays;
+      CUSTOM[which].autoMin = defaults.autoMin;
+      CUSTOM[which].minPolls = defaults.minPolls;
+      CUSTOM[which].compare = defaults.compare;
+      CUSTOM[which].showDiff = defaults.showDiff;
+
+      days.value = CUSTOM[which].maDays;
+      daysRange.value = Math.min(parseInt(daysRange.max || '365', 10), CUSTOM[which].maDays);
+      auto.checked = CUSTOM[which].autoMin;
+      minPolls.value = CUSTOM[which].minPolls;
+      compare.checked = CUSTOM[which].compare;
+      showDiff.checked = CUSTOM[which].showDiff;
+
+      const syncDisabled = () => {
+        const isAuto = auto.checked;
+        days.disabled = isAuto;
+        daysRange.disabled = isAuto;
+        minPolls.disabled = !isAuto;
+
+        // Difference only makes sense when comparing.
+        showDiff.disabled = !compare.checked;
+        if (!compare.checked) showDiff.checked = false;
+
+        // Reflect into state
+        CUSTOM[which].autoMin = auto.checked;
+        CUSTOM[which].minPolls = parseInt(minPolls.value || defaults.minPolls, 10);
+        CUSTOM[which].compare = compare.checked;
+        CUSTOM[which].showDiff = showDiff.checked;
+        CUSTOM[which].maDays = parseInt(days.value || defaults.maDays, 10);
+      };
+
+      const applyAndRefresh = () => {
+        // Clamp
+        const d = Math.max(3, parseInt(days.value || defaults.maDays, 10));
+        days.value = d;
+        daysRange.value = Math.min(parseInt(daysRange.max || '365', 10), d);
+
+        const mp = Math.max(3, parseInt(minPolls.value || defaults.minPolls, 10));
+        minPolls.value = mp;
+
+        syncDisabled();
+        app.refreshViews();
+      };
+
+      daysRange.addEventListener('input', () => {
+        days.value = daysRange.value;
+        applyAndRefresh();
+      });
+      days.addEventListener('change', applyAndRefresh);
+      auto.addEventListener('change', applyAndRefresh);
+      minPolls.addEventListener('change', applyAndRefresh);
+      compare.addEventListener('change', applyAndRefresh);
+      showDiff.addEventListener('change', applyAndRefresh);
+
+      syncDisabled();
+    };
+setup('approval', { maDays: CONFIG.approvalWindow, autoMin: true, minPolls: 24, compare: false, showDiff: false });
+setup('gb',       { maDays: CONFIG.gbWindow,       autoMin: true, minPolls: 24, compare: false, showDiff: false });
+  },
+
+  normalizeGB(list) {
+    return list.map(p => {
+      // RTW format: { results: [{choice,pct}], date_text, pollster, sample }
+      if (p && Array.isArray(p.results)) {
+        const dem = findChoicePctFromResults(p.results, ['dem', 'democrat']);
+        const rep = findChoicePctFromResults(p.results, ['rep', 'gop', 'republican']);
+        if (dem === null || rep === null) return null;
+        const date = parseRTWDateText(p.date_text) || new Date();
+        return { date, dem, rep, pollster: p.pollster || '', sample_size: p.sample || '' };
+      }
+
+      // VoteHub format
+      const dem = getAnswer(p, ['Dem', 'Democrat']);
+      const rep = getAnswer(p, ['Rep', 'Republican']);
+      if (dem === null || rep === null) return null;
+      return {
+        date: parseDate(p.end_date || p.start_date),
+        dem: dem, rep: rep,
+        pollster: p.pollster, sample_size: p.sample_size
+      };
+    }).filter(x => x);
+  },
+
+  normalizeApproval(list) {
+    return list.map(p => {
+      // RTW format
+      if (p && Array.isArray(p.results)) {
+        const app = findChoicePctFromResults(p.results, ['approve']);
+        const dis = findChoicePctFromResults(p.results, ['disapprove']);
+        if (app === null && dis === null) return null;
+        const date = parseRTWDateText(p.date_text) || new Date();
+        return { date, approve: app, disapprove: dis, pollster: p.pollster || '', sample_size: p.sample || '' };
+      }
+
+      // VoteHub format
+      const app = getAnswer(p, ['Approve', 'Strongly Approve', 'Yes']);
+      const dis = getAnswer(p, ['Disapprove', 'Strongly Disapprove', 'No']);
+      if (app === null && dis === null) return null;
+      return {
+        date: parseDate(p.end_date || p.start_date),
+        approve: app, disapprove: dis,
+        pollster: p.pollster, sample_size: p.sample_size
+      };
+    }).filter(x => x);
+  },
+
+  
+  buildAllPollsUI() {
+    const cats = new Set(['all']);
+    for (const p of (STATE.allPolls || [])) {
+      if (p && p.category) cats.add(String(p.category));
+    }
+    const sel = $('allCategory');
+    if (!sel) return;
+    sel.innerHTML = Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('');
+  },
+
+  renderAllPollsTable() {
+    const tbody = $('allPollsTbody');
+    if (!tbody) return;
+
+    const q = (($('allSearch')?.value || '') + '').toLowerCase().trim();
+    const cat = $('allCategory')?.value || 'all';
+    const lim = Number($('allLimit')?.value || 300);
+
+    const rows = (STATE.allPolls || []).filter(p => {
+      if (!p) return false;
+      if (cat !== 'all' && String(p.category) !== cat) return false;
+      if (!q) return true;
+      const hay = `${p.category||''} ${p.race||''} ${p.pollster||''} ${p.results_text||''}`.toLowerCase();
+      return hay.includes(q);
+    });
+
+    rows.sort((a,b) => {
+      const da = parseRTWDateText(a.date_text);
+      const db = parseRTWDateText(b.date_text);
+      const ta = da ? da.getTime() : 0;
+      const tb = db ? db.getTime() : 0;
+      return tb - ta;
+    });
+
+    const slice = rows.slice(0, lim);
+
+    tbody.innerHTML = slice.map(p => {
+      const d = parseRTWDateText(p.date_text);
+      const ds = d ? d.toISOString().slice(0,10) : (p.date_text || '');
+      const url = p.url || '';
+      const link = url ? `<a href="${url}" target="_blank" rel="noopener">open</a>` : '';
+      const res = (p.results_text || '').replace(/\s+/g,' ').trim().slice(0, 180);
+      return `<tr>
+        <td class="mono">${escapeHtml(ds)}</td>
+        <td>${escapeHtml(p.category || '')}</td>
+        <td>${escapeHtml(p.race || '')}</td>
+        <td>${escapeHtml(p.pollster || '')}</td>
+        <td>${escapeHtml(res)}</td>
+        <td>${link}</td>
+      </tr>`;
+    }).join('');
+  },
+
+refreshViews() {
+    STATE.filterStrict = $('toggleFilter').checked;
+    $('filterModeText').textContent = STATE.filterStrict ? "Strict Allowlist (Quality)" : "All Available Sources";
+
+    // Build both datasets up front:
+    const gbStrict = STATE.gbData.filter(p => isAllowed(p.pollster, true));
+    const gbAll = STATE.gbData.slice();
+    const apStrict = STATE.approvalData.filter(p => isAllowed(p.pollster, true));
+    const apAll = STATE.approvalData.slice();
+
+    const gbPrimary = STATE.filterStrict ? gbStrict : gbAll;
+    const apPrimary = STATE.filterStrict ? apStrict : apAll;
+
+    const mapVal = (arr, key) => arr.map(p => ({ ...p, value: p[key] })).filter(p => p.value != null);
+
+    const maFor = (which, raw) => {
+      const cfg = CUSTOM[which];
+      if (cfg.autoMin) return calculateRollingAvgMinPolls(raw, cfg.minPolls);
+      return calculateRollingAvg(raw, cfg.maDays);
+    };
+
+    /* ---------- Generic Ballot ---------- */
+    {
+      const cfg = CUSTOM.gb;
+
+      // Stats always reflect the current global filter mode (primary).
+      const demRawP = mapVal(gbPrimary, 'dem');
+      const repRawP = mapVal(gbPrimary, 'rep');
+      const demMAP = maFor('gb', demRawP);
+      const repMAP = maFor('gb', repRawP);
+      updateStatsDual('gbStats', gbPrimary.length, demMAP, repMAP);
+
+      let datasets = [
+        { name: 'Democrats', raw: demRawP, ma: demMAP, color: '#2563eb', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays },
+        { name: 'Republicans', raw: repRawP, ma: repMAP, color: '#dc2626', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays }
+      ];
+
+      const diffEl = $('gbDiffChart');
+
+      if (cfg.compare) {
+        const demRawF = mapVal(gbStrict, 'dem');
+        const repRawF = mapVal(gbStrict, 'rep');
+        const demMAF = maFor('gb', demRawF);
+        const repMAF = maFor('gb', repRawF);
+
+        const demRawA = mapVal(gbAll, 'dem');
+        const repRawA = mapVal(gbAll, 'rep');
+        const demMAA = maFor('gb', demRawA);
+        const repMAA = maFor('gb', repRawA);
+
+        datasets = [
+          { name: 'Democrats (Filtered)', raw: demRawF, ma: demMAF, color: '#2563eb', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays },
+          { name: 'Republicans (Filtered)', raw: repRawF, ma: repMAF, color: '#dc2626', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays },
+          { name: 'Democrats (All)', raw: demRawA, ma: demMAA, color: '#2563eb', lineDash: 'dot', rawOpacity: 0.16, windowDays: cfg.maDays, lineWidth: 2.5 },
+          { name: 'Republicans (All)', raw: repRawA, ma: repMAA, color: '#dc2626', lineDash: 'dot', rawOpacity: 0.16, windowDays: cfg.maDays, lineWidth: 2.5 }
+        ];
+
+        if (cfg.showDiff) {
+          diffEl.style.display = 'block';
+          renderDiffChart('gbDiffChart', [
+            { name: 'Dem Δ (Filtered − All)', color: '#2563eb', series: diffSeries(demMAF, demMAA) },
+            { name: 'Rep Δ (Filtered − All)', color: '#dc2626', series: diffSeries(repMAF, repMAA) }
+          ], 'Filtered − All (pp)');
+        } else {
+          diffEl.style.display = 'none';
+        }
+      } else {
+        diffEl.style.display = 'none';
+      }
+
+      renderDualChart('gbChart', datasets, 'Percentage (%)');
+    }
+
+    /* ---------- Approval ---------- */
+    {
+      const cfg = CUSTOM.approval;
+
+      // Stats reflect the current global filter mode (primary).
+      const appRawP = mapVal(apPrimary, 'approve');
+      const disRawP = mapVal(apPrimary, 'disapprove');
+      const appMAP = maFor('approval', appRawP);
+      const disMAP = maFor('approval', disRawP);
+      updateStatsDual('approvalStats', apPrimary.length, appMAP, disMAP);
+
+      let datasets = [
+        { name: 'Approve', raw: appRawP, ma: appMAP, color: '#059669', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays },
+        { name: 'Disapprove', raw: disRawP, ma: disMAP, color: '#dc2626', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays }
+      ];
+
+      const diffEl = $('approvalDiffChart');
+
+      if (cfg.compare) {
+        const appRawF = mapVal(apStrict, 'approve');
+        const disRawF = mapVal(apStrict, 'disapprove');
+        const appMAF = maFor('approval', appRawF);
+        const disMAF = maFor('approval', disRawF);
+
+        const appRawA = mapVal(apAll, 'approve');
+        const disRawA = mapVal(apAll, 'disapprove');
+        const appMAA = maFor('approval', appRawA);
+        const disMAA = maFor('approval', disRawA);
+
+        datasets = [
+          { name: 'Approve (Filtered)', raw: appRawF, ma: appMAF, color: '#059669', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays },
+          { name: 'Disapprove (Filtered)', raw: disRawF, ma: disMAF, color: '#dc2626', lineDash: 'solid', rawOpacity: 0.35, windowDays: cfg.maDays },
+          { name: 'Approve (All)', raw: appRawA, ma: appMAA, color: '#059669', lineDash: 'dot', rawOpacity: 0.16, windowDays: cfg.maDays, lineWidth: 2.5 },
+          { name: 'Disapprove (All)', raw: disRawA, ma: disMAA, color: '#dc2626', lineDash: 'dot', rawOpacity: 0.16, windowDays: cfg.maDays, lineWidth: 2.5 }
+        ];
+
+        if (cfg.showDiff) {
+          diffEl.style.display = 'block';
+          renderDiffChart('approvalDiffChart', [
+            { name: 'Approve Δ (Filtered − All)', color: '#059669', series: diffSeries(appMAF, appMAA) },
+            { name: 'Disapprove Δ (Filtered − All)', color: '#dc2626', series: diffSeries(disMAF, disMAA) }
+          ], 'Filtered − All (pp)');
+        } else {
+          diffEl.style.display = 'none';
+        }
+      } else {
+        diffEl.style.display = 'none';
+      }
+
+      renderDualChart('approvalChart', datasets, 'Percentage (%)');
+    }
+  }
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => app.init());
+} else {
+  app.init();
+}
+</script>
+</body>
+</html>
