@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polls</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    :root{
+      --bg-body:#f8fafc; --bg-card:#ffffff; --text-main:#0f172a; --text-muted:#64748b; --border:#e2e8f0;
+      --primary:#2563eb; --danger:#dc2626; --success:#16a34a; --neutral:#475569;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg-body:#020617; --bg-card:#0f172a; --text-main:#f8fafc; --text-muted:#94a3b8; --border:#1e293b;
+        --primary:#60a5fa; --danger:#f87171; --success:#4ade80;
+      }
+    }
+    body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg-body); color:var(--text-main);}
+    header{position:sticky; top:0; z-index:10; background:rgba(255,255,255,.8); backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--border); padding:14px 18px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;}
+    @media (prefers-color-scheme: dark){ header{background:rgba(15,23,42,.75);} }
+    header h1{margin:0; font-size:18px; font-weight:800; letter-spacing:-.02em;}
+    header .meta{font-size:12px; color:var(--text-muted);}
+    .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+    select,input{font-size:13px; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-main);}
+    main{max-width:1250px; margin:0 auto; padding:18px; display:grid; grid-template-columns:1fr; gap:14px;}
+    @media (min-width: 980px){ main{grid-template-columns: 1.2fr .8fr;} }
+    .card{background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:14px;}
+    .card h2{margin:0 0 10px 0; font-size:14px; font-weight:800; color:var(--text-main); display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+    .muted{color:var(--text-muted); font-weight:600; font-size:12px;}
+
+    table{width:100%; border-collapse:collapse; font-size:12px;}
+    thead th{position:sticky; top:68px; background:var(--bg-card); border-bottom:1px solid var(--border); text-align:left; padding:8px 6px; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:.06em; font-size:11px;}
+    tbody td{border-bottom:1px solid var(--border); padding:8px 6px; vertical-align:top;}
+    tbody tr:hover{background:rgba(100,116,139,.08);}
+    a{color:var(--primary); text-decoration:none; font-weight:700;}
+    a:hover{text-decoration:underline;}
+
+    .tag{display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid var(--border);
+      font-weight:800; font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted);}
+
+    .plot{width:100%; height:320px;}
+    .note{font-size:12px; color:var(--text-muted); line-height:1.35;}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Polls</h1>
+      <div class="meta" id="meta">Loading…</div>
+    </div>
+    <div class="controls">
+      <select id="category">
+        <option value="all">All categories</option>
+      </select>
+      <input id="search" placeholder="Search race/pollster/results…" style="min-width:260px" />
+      <select id="limit">
+        <option value="50">50 rows</option>
+        <option value="100" selected>100 rows</option>
+        <option value="200">200 rows</option>
+        <option value="500">500 rows</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" style="grid-column: 1 / -1;">
+      <h2>Latest polls <span class="muted" id="rowsInfo"></span></h2>
+      <div style="overflow:auto; max-height:560px; border-radius:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px">Date</th>
+              <th style="width:130px">Category</th>
+              <th style="width:180px">Race</th>
+              <th style="width:170px">Pollster</th>
+              <th>Results</th>
+              <th style="width:90px">Sample</th>
+              <th style="width:70px">Link</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="note" style="margin-top:10px">
+        Source: RaceToTheWH (scraped daily). This table is built from the poll blocks that include an external poll link.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Poll volume over time <span class="muted">(parseable dates only)</span></h2>
+      <div id="plotTime" class="plot"></div>
+    </section>
+
+    <section class="card">
+      <h2>Category breakdown</h2>
+      <div id="plotCat" class="plot"></div>
+    </section>
+  </main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function clean(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
+
+  function parseDateGuess(dateText){
+    // Accept: "Jan 12-15, 2026" or "Jan 12-15" or "01/12 - 01/15".
+    if (!dateText) return null;
+    const now = new Date();
+    const yearDefault = now.getFullYear();
+
+    const monthMap = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,sept:8,oct:9,nov:10,dec:11};
+    const m = dateText.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?(?:,?\s*(\d{4}))?/i);
+    if (m){
+      const mon = monthMap[m[1].toLowerCase()];
+      const d2 = Number(m[3] || m[2]);
+      const y = Number(m[4] || yearDefault);
+      const dt = new Date(Date.UTC(y, mon, d2));
+      if (!Number.isNaN(dt.getTime())) return dt;
+    }
+
+    const n = dateText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?:\s*[-–]\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?)?/);
+    if (n){
+      const mm2 = Number(n[4] ? n[4] : n[1]);
+      const dd2 = Number(n[5] ? n[5] : n[2]);
+      let yy = n[6] || n[3] || yearDefault;
+      yy = Number(String(yy).length === 2 ? ('20'+yy) : yy);
+      const dt = new Date(Date.UTC(yy, mm2-1, dd2));
+      if (!Number.isNaN(dt.getTime())) return dt;
+    }
+
+    return null;
+  }
+
+  function formatISO(d){ return d.toISOString().slice(0,10); }
+
+  function renderTable(polls){
+    const tbody = $('tbody');
+    tbody.innerHTML = '';
+    for (const p of polls){
+      const tr = document.createElement('tr');
+      const td = (html) => {
+        const el = document.createElement('td');
+        el.innerHTML = html;
+        return el;
+      };
+      tr.appendChild(td(clean(p.date_text) || ''));
+      tr.appendChild(td(`<span class="tag">${clean(p.category||'')}</span>`));
+      tr.appendChild(td(clean(p.race) || ''));
+      tr.appendChild(td(clean(p.pollster) || ''));
+      tr.appendChild(td(clean(p.results_text) || ''));
+      tr.appendChild(td(clean(p.sample) || ''));
+      tr.appendChild(td(p.url ? `<a href="${p.url}" target="_blank" rel="noopener">open</a>` : ''));
+      tbody.appendChild(tr);
+    }
+  }
+
+  function plotCategory(polls){
+    const counts = new Map();
+    for (const p of polls){
+      const k = p.category || 'other';
+      counts.set(k, (counts.get(k)||0)+1);
+    }
+    const entries = [...counts.entries()].sort((a,b)=>b[1]-a[1]);
+    Plotly.newPlot('plotCat', [{
+      type:'bar',
+      x: entries.map(d=>d[0]),
+      y: entries.map(d=>d[1]),
+    }], {
+      margin:{l:40,r:10,t:10,b:70},
+      paper_bgcolor:'rgba(0,0,0,0)',
+      plot_bgcolor:'rgba(0,0,0,0)',
+      xaxis:{tickangle:-35},
+      yaxis:{title:'polls'},
+      showlegend:false,
+    }, {displayModeBar:false, responsive:true});
+  }
+
+  function plotTime(polls){
+    const byDay = new Map();
+    for (const p of polls){
+      const d = parseDateGuess(p.date_text);
+      if (!d) continue;
+      const k = formatISO(d);
+      byDay.set(k, (byDay.get(k)||0)+1);
+    }
+    const xs = [...byDay.keys()].sort();
+    const ys = xs.map(x=>byDay.get(x));
+    Plotly.newPlot('plotTime', [{
+      type:'scatter',
+      mode:'lines+markers',
+      x: xs,
+      y: ys,
+    }], {
+      margin:{l:40,r:10,t:10,b:40},
+      paper_bgcolor:'rgba(0,0,0,0)',
+      plot_bgcolor:'rgba(0,0,0,0)',
+      yaxis:{title:'polls/day'},
+      xaxis:{},
+      showlegend:false,
+    }, {displayModeBar:false, responsive:true});
+  }
+
+  function applyFilters(all){
+    const cat = $('category').value;
+    const q = clean($('search').value).toLowerCase();
+    const lim = Number($('limit').value);
+
+    let rows = all;
+    if (cat !== 'all') rows = rows.filter(p => (p.category||'other') === cat);
+    if (q) {
+      rows = rows.filter(p => {
+        const hay = [p.category,p.race,p.pollster,p.results_text,p.sample,p.date_text].map(clean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    rows = rows.slice(0, lim);
+
+    $('rowsInfo').textContent = `${rows.length.toLocaleString()} shown`;
+    renderTable(rows);
+    plotTime(rows);
+    plotCategory(rows);
+  }
+
+  async function main(){
+    const res = await fetch('polls.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Failed to load polls.json: ${res.status}`);
+    const data = await res.json();
+
+    const polls = Array.isArray(data.polls) ? data.polls : [];
+
+    $('meta').textContent = `Updated: ${data.updatedAt || 'unknown'} • Source: ${data.source || 'unknown'} • Polls: ${polls.length.toLocaleString()}`;
+
+    // populate categories
+    const cats = [...new Set(polls.map(p => p.category || 'other'))].sort();
+    for (const c of cats){
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      $('category').appendChild(opt);
+    }
+
+    // hook events
+    ['category','search','limit'].forEach(id => {
+      $(id).addEventListener('input', () => applyFilters(polls));
+      $(id).addEventListener('change', () => applyFilters(polls));
+    });
+
+    applyFilters(polls);
+  }
+
+  main().catch(err => {
+    $('meta').textContent = 'Error loading data.';
+    console.error(err);
+    alert(err.message || String(err));
+  });
+</script>
+</body>
+</html>
